@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using RocketMan;
 
 namespace RocketMan.Tabs
 {
@@ -63,22 +64,46 @@ namespace RocketMan.Tabs
                 curTab = tabs[curTabIndex];
                 if (useSidebar)
                 {
-                    var tabsRect = inRect.LeftPartPixels(170);
-                    var contentRect = new Rect(inRect);
-                    contentRect.xMin += 180;
+                    GUIFont.Anchor = TextAnchor.UpperLeft;
+                    Rect tabsRect = inRect.LeftPartPixels(50);
+                    Rect contentRect = new Rect(inRect);
+                    contentRect.xMin += 60;
                     GUIUtility.ExecuteSafeGUIAction(() =>
                     {
-                        DoSidebar(tabsRect);
+                        DoSidebar_newtemp(tabsRect);
                     });
                     GUIUtility.ExecuteSafeGUIAction(() =>
                     {
-                        Text.CurFontStyle.fontStyle = FontStyle.Bold;
-                        Text.Font = GameFont.Medium;
-                        GUI.Label(contentRect.TopPartPixels(25), curTab.Label);
+                        GUIFont.Font = GUIFontSize.Small;
+                        GUIFont.CurFontStyle.fontStyle = FontStyle.Bold;
+                        GUIFont.Anchor = TextAnchor.MiddleLeft;
+                        float headerHeight = "RocketMan".GetTextHeight(inRect.width) + 3;
+                        Rect rect = contentRect.TopPartPixels(headerHeight);
+                        // Create the RocketMan stamp                        
+                        Widgets.Label(rect, "RocketMan");
+                        // Create the version string
+                        rect.xMin += 90;
+                        rect.xMax -= 45;
+                        //rect.y += 2;
+                        GUIFont.CurFontStyle.fontStyle = FontStyle.Normal;
+                        GUIFont.Font = GUIFontSize.Tiny;
+                        Widgets.Label(rect.TopPartPixels(25), $"Version <color=grey>{RocketAssembliesInfo.Version}</color>");
+                        // Do the window content
+                        contentRect.yMin += headerHeight + 5;
+                        Widgets.DrawBoxSolid(contentRect.TopPartPixels(1), Color.grey);
+                        contentRect.yMin += 5;
+                    });
+                    GUIUtility.ExecuteSafeGUIAction(() =>
+                    {
+                        GUIFont.Font = GUIFontSize.Smaller;
+                        GUIFont.CurFontStyle.fontStyle = FontStyle.Normal;
+                        GUIFont.Anchor = TextAnchor.MiddleLeft;
+                        Widgets.Label(contentRect.TopPartPixels(25), curTab.Label);
                     });
                     contentRect.yMin += 30;
                     GUIUtility.ExecuteSafeGUIAction(() =>
                     {
+                        GUIFont.Anchor = TextAnchor.UpperLeft;
                         curTab.DoContent(contentRect);
                     });
                 }
@@ -140,6 +165,45 @@ namespace RocketMan.Tabs
             }
         }
 
+        private void DoSidebar_newtemp(Rect inRect)
+        {
+            int active = tabs.Count(t => t.ShouldShow);
+            tabBarRect = new Rect(inRect);
+            tabBarRect.width -= 2;
+            tabBarRect.height = 40 * active + 10 + (active - 1) * 5;
+            Widgets.DrawMenuSection(inRect);
+            Widgets.BeginScrollView(inRect, ref scrollPosition, tabBarRect.AtZero());
+            Rect rect = new Rect(5, 5, 40, 40);
+            var counter = 0;
+            foreach (var tab in tabs)
+            {
+                if (!tab.ShouldShow)
+                {
+                    counter++;
+                    continue;
+                }
+                if (tab.Selected)
+                {
+                    Widgets.DrawWindowBackgroundTutor(rect);
+                }
+                Widgets.DrawHighlightIfMouseover(rect);
+                Widgets.DrawTextureFitted(rect, tab.Icon, 0.85f);
+                TooltipHandler.TipRegion(rect, tab.Label);
+                ITabContent localTab = tab;
+                int localCounter = counter;
+                if (!tab.Selected && Widgets.ButtonInvisible(rect))
+                {
+                    localTab.Selected = true;
+                    curTab.Selected = false;
+                    curTab = localTab;
+                    curTabIndex = localCounter;
+                }
+                rect.y += rect.height + 5;
+                counter++;
+            }
+            Widgets.EndScrollView();
+        }
+
         private void DoSidebar(Rect rect)
         {
             tabBarRect = rect;
@@ -147,8 +211,8 @@ namespace RocketMan.Tabs
             tabBarRect.height = 30 * tabs.Count(t => t.ShouldShow);
             Widgets.DrawMenuSection(rect);
             Widgets.BeginScrollView(rect, ref scrollPosition, tabBarRect);
-            Text.Anchor = TextAnchor.MiddleLeft;
-            Text.Font = GameFont.Tiny;
+            GUIFont.Anchor = TextAnchor.MiddleLeft;
+            GUIFont.Font = GUIFontSize.Tiny;
             var curRect = new Rect(rect.xMin + 5, rect.yMin + 5, 160, 30);
             var counter = 0;
             foreach (var tab in tabs)

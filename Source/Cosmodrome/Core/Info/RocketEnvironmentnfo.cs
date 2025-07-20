@@ -1,35 +1,40 @@
 ﻿using System;
 using System.IO;
+using HarmonyLib;
 using Verse;
 
 namespace RocketMan
 {
     public static class RocketEnvironmentInfo
     {
-        private static bool isDevEnvInitialized = false;
+        // private static bool isDevEnvInitialized = false;
+        // private static bool isDevEnv = false;
 
-        private static bool isDevEnv = false;
+        private const string LogFolderName = "Logs";
 
-        private const string PluginFolderSubPath = "1.2/Plugins";
+        private const string DependenciesSubPath = "1.5/Plugins/Dependencies";
 
-        private const string CustomConfigSubPath = "Custom/RocketMan/";
+        private const string PluginFolderSubPath = "1.5/Plugins/Stable";
+
+        private const string ExperimentalPluginFolderSubPath = "1.5/Plugins/Experimental";
 
         public static bool IsDevEnv
         {
             get
             {
-                if (!isDevEnvInitialized)
-                {
-                    string path = Path.GetFullPath(Path.Combine(GenFilePaths.ConfigFolderPath, "rocketeer.0102.txt"));
-                    Log.Message($"ROCKETMAN: config path {path}");
-                    isDevEnvInitialized = true;
-                    isDevEnv = File.Exists(path);
-                    if (isDevEnv)
-                    {
-                        Log.Warning($"ROCKETMAN: dev environment detected!");
-                    }
-                }
-                return isDevEnv;
+                //if (!isDevEnvInitialized)
+                //{
+                //    string path = Path.GetFullPath(Path.Combine(GenFilePaths.ConfigFolderPath, "rocketeer.0102.txt"));
+                //    RocketMan.Logger.Message($"ROCKETMAN: config path {path}");
+                //    isDevEnvInitialized = true;
+                //    isDevEnv = File.Exists(path);
+                //    if (isDevEnv)
+                //    {
+                //        Log.Warning($"ROCKETMAN: dev environment detected!");
+                //    }
+                //}
+                //return isDevEnv;
+                return File.Exists(DevKeyFilePath);
             }
         }
 
@@ -43,6 +48,16 @@ namespace RocketMan
             get => Path.Combine(Finder.ModContentPack.RootDir, PluginFolderSubPath);
         }
 
+        public static string DependenciesFolderPath
+        {
+            get => Path.Combine(Finder.ModContentPack.RootDir, DependenciesSubPath);
+        }
+
+        public static string ExperimentalPluginsFolderPath
+        {
+            get => IsDevEnv ? Path.Combine(Finder.ModContentPack.RootDir, ExperimentalPluginFolderSubPath) : null;
+        }
+
         public static string ConfigFolderPath
         {
             get => GenFilePaths.ConfigFolderPath;
@@ -50,7 +65,17 @@ namespace RocketMan
 
         public static string CustomConfigFolderPath
         {
-            get => Path.Combine(GenFilePaths.ConfigFolderPath, CustomConfigSubPath);
+            get => Path.Combine(Directory.GetParent(GenFilePaths.ConfigFolderPath).FullName, "RocketMan");
+        }
+
+        public static string RocketSettingsFilePath
+        {
+            get => Path.Combine(CustomConfigFolderPath, GenText.SanitizeFilename($"Mod_{RocketMod.Instance.Content.FolderName}_{RocketMod.Instance.GetType().Name}.xml"));
+        }
+
+        public static string LogsFolderPath
+        {
+            get => Path.Combine(CustomConfigFolderPath, LogFolderName);
         }
 
         public static bool IncompatibilityUnresolved = false;

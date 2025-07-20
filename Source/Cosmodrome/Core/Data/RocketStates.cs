@@ -5,15 +5,19 @@ namespace RocketMan
     {
         public static int LastFrame;
 
+        public static ContextFlag Context = ContextFlag.Unknown;
+
         public static int TicksSinceStarted = 0;
+
+        public static bool DefsLoaded = false;
 
         public static bool SingleTickIncrement = false;
 
         public static int SingleTickLeft = 0;
 
-        public static byte[] StatExpiry = new byte[ushort.MaxValue];
+        public static float[] StatExpiry = new float[ushort.MaxValue];
 
-        public static bool[] DilatedDefs = new bool[ushort.MaxValue];
+        public static FlagArray DilatedDefs = new FlagArray(ushort.MaxValue);
 
         public static object LOCKER = new object();
     }

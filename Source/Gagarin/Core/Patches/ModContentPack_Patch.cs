@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using RocketMan;
 using Verse;
 
 namespace Gagarin
@@ -16,9 +18,33 @@ namespace Gagarin
 
             public static void Postfix(ModContentPack __instance)
             {
-                __instance.LoadPatches();
-
                 Context.CurrentLoadingMod = null;
+
+                CheckPatches(__instance);
+            }
+
+            private static void CheckPatches(ModContentPack mod)
+            {
+                Context.IsLoadingPatchXML = true;
+                Context.CurrentLoadingMod = mod;
+                Exception error = null;
+                try
+                {
+                    DirectXmlLoader.XmlAssetsInModFolder(mod, "Patches/").ToList();
+                }
+                catch (Exception er)
+                {
+                    error = er;
+                }
+                finally
+                {
+                    Context.IsLoadingPatchXML = false;
+                    Context.CurrentLoadingMod = null;
+                }
+                if (error != null)
+                {
+                    throw error;
+                }
             }
         }
     }

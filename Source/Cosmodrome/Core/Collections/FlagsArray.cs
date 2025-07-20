@@ -1,41 +1,65 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Verse;
 
 namespace RocketMan
 {
-    public class FlagsArray
+    public class FlagArray
     {
-        private readonly int size;
-        private readonly int[] memory;
+        private int[] map;
 
-        public int Size
+        private const int Bit = 1;
+        private const int ChunkSize = 32;
+
+        public int Length
         {
-            get => size;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => map.Length;
         }
 
-        public FlagsArray(int size)
+        public FlagArray(int size)
         {
-            this.memory = new int[(size / 32) + 16];
-            this.size = size;
-        }
-
-        public bool Get(int key)
-        {
-            return (memory[key / 32] & (1 << (key % 32))) == (1 << (key % 32));
-        }
-
-        public FlagsArray Set(int key, bool value)
-        {
-            int index = key / 32;
-            memory[index] = value ?
-                memory[index] | (1 << (key % 32)) : memory[index] & ((1 << (key % 32)) ^ 0x00);
-            return this;
+            this.map = new int[(size / ChunkSize) + ChunkSize];
         }
 
         public bool this[int key]
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Get(key);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => Set(key, value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Get(int key)
+        {
+            return (map[key / ChunkSize] & GetOp(key)) != 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FlagArray Set(int key, bool value)
+        {
+            map[key / ChunkSize] = value ?
+                map[key / ChunkSize] | GetOp(key) :
+                map[key / ChunkSize] & ~GetOp(key);
+            return this;
+        }
+
+        public void Expand(int targetLength)
+        {
+            targetLength = (targetLength / ChunkSize) + ChunkSize;
+            if (targetLength > Length * 0.75f)
+            {
+                int[] expanded = new int[targetLength];
+                Array.Copy(map, 0, expanded, 0, map.Length);
+                this.map = expanded;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int GetOp(int key)
+        {
+            return Bit << (key % ChunkSize);
         }
     }
 }

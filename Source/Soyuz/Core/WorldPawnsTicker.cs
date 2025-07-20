@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using RimWorld;
 using RimWorld.Planet;
@@ -15,18 +16,26 @@ namespace Soyuz
         public const int BucketCount = 30;
 
         private static HashSet<Pawn> pawns = new HashSet<Pawn>();
+
         private static HashSet<Pawn> caravaningPawns = new HashSet<Pawn>();
+
         private static HashSet<Pawn> previousBucket = new HashSet<Pawn>();
+
         private static HashSet<Pawn>[] buckets;
+
         private static Game game;
-        private static bool dirty = false;
+
+        //private static bool dirty = false;
+
         public static int curIndex = 0;
+
         public static int curCycle = 0;
 
         public static bool isActive = false;
 
         public static HashSet<Pawn> PreviousBucket
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => previousBucket;
         }
 
@@ -39,20 +48,35 @@ namespace Soyuz
         public override void GameComponentTick()
         {
             base.GameComponentTick();
-            if (!RocketPrefs.WarmingUp && Find.World != null)
+            curIndex++;
+            if (curIndex >= BucketCount)
             {
-                if (dirty)
-                {
-                    dirty = false;
-                    ResetInternalState();
-                    Rebuild(Find.WorldPawns);
-                }
-                else if (GenTicks.TicksGame % 5000 == 0)
-                {
-                    ResetInternalState();
-                    Rebuild(Find.WorldPawns);
-                }
+                curCycle++;
+                curIndex = 0;
             }
+            //if (RocketPrefs.WarmingUp)
+            //{
+            //    if (!dirty)
+            //    {
+            //        ResetInternalState();
+            //        dirty = true;
+            //    }
+            //    return;
+            //}
+            //if (Find.World != null)
+            //{
+            //    if (dirty)
+            //    {
+            //        dirty = false;
+            //        ResetInternalState();
+            //        Rebuild(Find.WorldPawns);
+            //    }
+            //    else if (GenTicks.TicksGame % 5000 == 0)
+            //    {
+            //        ResetInternalState();
+            //        Rebuild(Find.WorldPawns);
+            //    }
+            //}
         }
 
         public override void StartedNewGame()
@@ -87,9 +111,12 @@ namespace Soyuz
                 ResetInternalState();
                 curIndex = curCycle = 0;
                 game = Current.Game;
-                buckets = new HashSet<Pawn>[BucketCount];
+                buckets ??= new HashSet<Pawn>[BucketCount];
                 for (int i = 0; i < BucketCount; i++)
-                    buckets[i] = new HashSet<Pawn>();
+                {
+                    buckets[i] ??= new HashSet<Pawn>();
+                    buckets[i].Clear();
+                }
             }
         }
 
@@ -98,7 +125,10 @@ namespace Soyuz
             ResetInternalState();
             curCycle = 0;
             curIndex = 0;
-            for (int i = 0; i < BucketCount; i++) buckets[i].Clear();
+            for (int i = 0; i < BucketCount; i++)
+            {
+                buckets[i].Clear();
+            }
             foreach (Pawn pawn in instance.pawnsAlive)
             {
                 if (!pawn.Dead && !pawn.Destroyed)
@@ -115,18 +145,25 @@ namespace Soyuz
 
         public static void Register(Pawn pawn)
         {
-            int index = GetBucket(pawn);
+            int index = GetBucket(pawn);            
             if (buckets == null)
                 TryInitialize();
             if (buckets[index] == null)
                 buckets[index] = new HashSet<Pawn>();
+            else if (buckets[index].Contains(pawn) && (pawn.Dead || pawn.Destroyed))
+            {
+                Deregister(pawn);
+                return;
+            }
             if (pawn.IsCaravanMember())
+            {
                 caravaningPawns.Add(pawn);
+            }
             pawns.Add(pawn);
             buckets[index].Add(pawn);
         }
 
-        public static void SetDirty() => dirty = true;
+        //public static void SetDirty() => dirty = true;
 
         public static void Deregister(Pawn pawn)
         {
@@ -134,11 +171,18 @@ namespace Soyuz
             if (buckets[index] == null) return;
             pawns.RemoveWhere(p => p.thingIDNumber == pawn.thingIDNumber);
             caravaningPawns.RemoveWhere(p => p.thingIDNumber == pawn.thingIDNumber);
-            buckets[index].Remove(pawn);
+            buckets[index].RemoveWhere(p => p.thingIDNumber == pawn.thingIDNumber);
         }
 
         public static HashSet<Pawn> GetPawns(bool fallbackMode = false)
         {
+            if (buckets == null)
+            {
+                Log.Warning("SOYUZ: GetPawns called before initialization");
+                TryInitialize();
+
+                return Find.WorldPawns.pawnsAlive;
+            }
             HashSet<Pawn> bucket = buckets[curIndex];
             curIndex = GenTicks.TicksGame % 30;
             if (curIndex == 0)
@@ -178,6 +222,7 @@ namespace Soyuz
             result = GetPawns(fallbackMode: true);
         }
 
+
         private static IEnumerable<Pawn> AddExtraPawns(IEnumerable<Pawn> bucket)
         {
             List<Pawn> temp = new List<Pawn>();
@@ -207,12 +252,13 @@ namespace Soyuz
             }
         }
 
-        private static int GetBucket(Pawn pawn)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetBucket(Pawn pawn)
         {
             int hash;
             unchecked
-            {
-                hash = pawn.thingIDNumber + GenTicks.TicksGame;
+            {                
+                hash = pawn.thingIDNumber;
                 if (hash < 0) hash *= -1;
             }
             return hash % BucketCount;

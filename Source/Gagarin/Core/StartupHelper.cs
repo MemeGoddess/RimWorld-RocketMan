@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using JetBrains.Annotations;
 using RocketMan;
 using Verse;
@@ -12,12 +13,18 @@ namespace Gagarin
         [Main.OnInitialization]
         public static void StartUpStarted()
         {
-            Context.RunningMods = LoadedModManager.RunningMods.ToList();
-            Context.Core = LoadedModManager.RunningMods.First(m => m.IsCoreMod);
-            Context.IsUsingCache = false;
-
+            Context.RunningMods  = LoadedModManager.RunningMods.ToList();
+            Context.Core         = LoadedModManager.RunningMods.First(m => m.IsCoreMod);
+            
+            if (!Directory.Exists(GagarinEnvironmentInfo.CacheFolderPath))
+            {
+                Directory.CreateDirectory(GagarinEnvironmentInfo.CacheFolderPath);
+            }
+            if (!Directory.Exists(GagarinEnvironmentInfo.TexturesFolderPath))
+            {
+                Directory.CreateDirectory(GagarinEnvironmentInfo.TexturesFolderPath);
+            }
             Log.Message("GAGARIN: <color=green>StartUpStarted called!</color>");
-
             if (GagarinEnvironmentInfo.CacheExists)
             {
                 Log.Warning("GAGARIN: <color=green>Cache found</color>");
@@ -26,19 +33,43 @@ namespace Gagarin
 
                 if (GagarinEnvironmentInfo.ModListChanged)
                 {
-                    Log.Warning("GAGARIN: Mod list changed! Deleting cache");
-
-                    if (File.Exists(GagarinEnvironmentInfo.ModListFilePath))
-                        File.Delete(GagarinEnvironmentInfo.ModListFilePath);
                     Context.IsUsingCache = false;
+
+                    Log.Warning("GAGARIN: Mod list changed! Deleting cache");
                 }
             }
-            else if (!Directory.Exists(GagarinEnvironmentInfo.CacheFolderPath))
+            if (!Context.IsUsingCache)
             {
-                Directory.CreateDirectory(GagarinEnvironmentInfo.CacheFolderPath);
+                Log.Warning("GAGARIN: <color=green>Cache not found or got purged!</color>");
             }
-
+            RocketMan.Logger.Message("GAGARIN: <color=green>Loading cache settings!</color>");
             RunningModsSetUtility.Dump(Context.RunningMods, GagarinEnvironmentInfo.ModListFilePath);
+
+            GagarinSettings.LoadSettings();
+            if (GagarinPrefs.CacheCreationTime == null || DateTime.Now.Subtract(GagarinPrefs.CacheCreationTime).Days >= 2)
+            {
+                GagarinPrefs.CacheCreationTime = default(DateTime);
+                Context.IsUsingCache = false;
+                Log.Warning("GAGARIN: Cache expired!");
+                GagarinSettings.WriteSettings();
+            }
+            if (GagarinPrefs.Enabled)
+            {
+                GagarinPatcher.PatchAll();
+            }
+            else
+            {
+                Log.Message("GAGARIN: <color=red>Gagarin is disabled!</color>");
+            }
+        }
+
+        private static Assembly ResolveHandler(object sender, ResolveEventArgs e)
+        {
+            Log.Error($"ROCKETMAN: Trying to resolve {e.Name}");
+
+            Logger.Debug($"ROCKETMAN: Trying to resolve {e.Name}", file: "ResolveHandler.log");
+
+            return null;
         }
 
         [Main.OnStaticConstructor]
@@ -46,7 +77,9 @@ namespace Gagarin
         {
             Log.Message("GAGARIN: <color=green>StartUpFinished called!</color>");
 
+            Context.Assets.Clear();
             Context.AssetsHashes.Clear();
+            Context.AssetsHashesInt.Clear();
             Context.DefsXmlAssets.Clear();
             Context.XmlAssets.Clear();
             Context.CurrentLoadingMod = null;

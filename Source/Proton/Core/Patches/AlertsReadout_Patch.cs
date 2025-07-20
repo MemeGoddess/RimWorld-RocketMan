@@ -26,35 +26,35 @@ namespace Proton
 
         public static void Postfix(AlertsReadout __instance)
         {
-            //
-            //__instance.AllAlerts.SortBy(a => a.GetName());
-            Context.alerts = __instance.AllAlerts.ToArray();
-            Context.alertSettingsByIndex = new AlertSettings[Context.alerts.Length];
+            bool shouldSave = false;
             int index = 0;
-            Context.readoutInstance = __instance;
-            foreach (Alert alert in Context.alerts)
+            Context.Alerts = __instance.AllAlerts.ToArray();
+            Context.AlertSettingsByIndex = new AlertSettings[Context.Alerts.Length];            
+            Context.ReadoutInstance = __instance;
+            foreach (Alert alert in Context.Alerts)
             {
-                string id = alert.GetType().Name;
-                if (Context.typeIdToSettings.TryGetValue(alert.GetType().Name, out AlertSettings settings))
-                {
-                    Context.alertSettingsByIndex[index] = settings;
-                }
-                else
+                string id = alert.GetType().FullName;
+                if (!Context.TypeIdToSettings.TryGetValue(id, out AlertSettings settings))
                 {
                     settings = new AlertSettings(id);
-                    Context.typeIdToSettings[id] = settings;
-                    Context.alertSettingsByIndex[index] = settings;
+                    Context.TypeIdToSettings[id] = settings;
+                    shouldSave = true;
                 }
-                Context.alertToSettings[alert] = settings;
+                Context.AlertSettingsByIndex[index] = settings;
+                Context.AlertToSettings[alert] = settings;
                 settings.alert = alert;
                 index++;
             }
+            if (shouldSave)            
+                RocketMod.Instance.WriteSettings();            
         }
     }
 
     [ProtonPatch(typeof(AlertsReadout), nameof(AlertsReadout.AlertsReadoutOnGUI))]
     public static class AlertsReadout_AlertsReadoutOnGUI_Patch
     {
+        private static FieldInfo fEnabled = AccessTools.Field(typeof(RocketPrefs), nameof(RocketPrefs.Enabled));
+
         private static FieldInfo fAlertThrottling = AccessTools.Field(typeof(RocketPrefs), nameof(RocketPrefs.AlertThrottling));
 
         private static FieldInfo fAlertsDisabled = AccessTools.Field(typeof(RocketPrefs), nameof(RocketPrefs.DisableAllAlert));
@@ -64,6 +64,9 @@ namespace Proton
             CodeInstruction[] codes = instructions.ToArray();
             Label l1 = generator.DefineLabel();
             Label l2 = generator.DefineLabel();
+
+            yield return new CodeInstruction(OpCodes.Ldsfld, fEnabled);
+            yield return new CodeInstruction(OpCodes.Brfalse_S, l1);
 
             yield return new CodeInstruction(OpCodes.Ldsfld, fAlertThrottling);
             yield return new CodeInstruction(OpCodes.Brfalse_S, l1);
@@ -100,7 +103,9 @@ namespace Proton
 
         private static void CheckAllActiveAlerts(AlertsReadout readoutInstance)
         {
-            if (!RocketPrefs.AlertThrottling)
+            if (false
+                || !RocketPrefs.AlertThrottling
+                || !RocketPrefs.Enabled)
                 return;
             if (RocketPrefs.DisableAllAlert && readoutInstance.activeAlerts.Count > 0)
             {
@@ -113,7 +118,7 @@ namespace Proton
             for (int i = 0; i < readoutInstance.activeAlerts.Count; i++)
             {
                 Alert alert = readoutInstance.activeAlerts[i];
-                if (Context.alertToSettings.TryGetValue(alert, out AlertSettings settings) && !settings.Enabled)
+                if (Context.AlertToSettings.TryGetValue(alert, out AlertSettings settings) && !settings.Enabled)
                 {
                     settings.UpdateAlert(removeReadout: false);
                     removalList.Add(alert);
@@ -153,6 +158,9 @@ namespace Proton
             Label l5 = generator.DefineLabel();
             Label l6 = generator.DefineLabel();
             Label l7 = generator.DefineLabel();
+
+            yield return new CodeInstruction(OpCodes.Ldsfld, fEnabled);
+            yield return new CodeInstruction(OpCodes.Brfalse_S, l7);
 
             yield return new CodeInstruction(OpCodes.Ldsfld, fAlertThrottling);
             yield return new CodeInstruction(OpCodes.Brfalse_S, l7);
@@ -230,11 +238,19 @@ namespace Proton
         private static bool ShouldUpdate(int index)
         {
             if (RocketPrefs.DisableAllAlert)
+            {
                 return false;
-            AlertSettings settings = Context.alertSettingsByIndex[index];
-            if (settings == null)
+            }
+            if (index < 0 || index >= Context.Alerts.Length)
+            {
                 return true;
-            return settings.Enabled && settings.ShouldUpdate;
+            }
+            AlertSettings settings = Context.AlertSettingsByIndex[index];
+            if (settings != null)
+            {
+                return settings.Enabled && settings.ShouldUpdate;
+            }
+            return true;
         }
 
         private static void StartProfiling(int index)
@@ -244,8 +260,11 @@ namespace Proton
 
         private static void StopProfiling(int index)
         {
-            Context.alertSettingsByIndex[index]?.UpdatePerformanceMetrics((float)stopwatch.ElapsedTicks * 1000.0f / (float)Stopwatch.Frequency);
-            stopwatch.Stop();
+            if (index >= 0 && index < Context.Alerts.Length)
+            {
+                Context.AlertSettingsByIndex[index]?.UpdatePerformanceMetrics((float)stopwatch.ElapsedTicks * 1000.0f / (float)Stopwatch.Frequency);
+                stopwatch.Stop();
+            }
         }
 
         private static int GetCount(AlertsReadout readout) => (int)Math.Max(readout.AllAlerts.Count * 0.75f, 24);

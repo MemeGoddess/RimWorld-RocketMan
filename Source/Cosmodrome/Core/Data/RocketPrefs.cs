@@ -17,13 +17,16 @@ namespace RocketMan
         }
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool Enabled = true;
+        public static bool Enabled = true;        
 
         [Main.SettingsField(warmUpValue: false)]
         public static bool Learning = true;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool LabelCaching = true;
+        public static bool FixBeauty = true;
+
+        [Main.SettingsField(warmUpValue: false)]
+        public static bool LearningAlertEnabled = true;
 
         [Main.SettingsField(warmUpValue: false)]
         public static bool AlertThrottling = true;
@@ -35,10 +38,10 @@ namespace RocketMan
         public static bool TimeDilation = true;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool TimeDilationCriticalHediffs = true;
+        public static bool TimeDilationCriticalHediffs = false;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool TimeDilationWorldPawns = true;
+        public static bool TimeDilationWorldPawns = false;
 
         [Main.SettingsField(warmUpValue: false)]
         public static bool TimeDilationVisitors = false;
@@ -53,32 +56,45 @@ namespace RocketMan
         public static bool TimeDilationWildlife = true;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool TimeDilationColonyAnimals = true;
+        public static bool TimeDilationColonists = false;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool TranslationCaching = true;
+        public static bool TimeDilationColonyAnimals = false;
+
+        [Main.SettingsField(warmUpValue: false)]
+        public static bool TranslationCaching = false;
 
         [Main.SettingsField(warmUpValue: false)]
         public static bool ThoughtsCaching = true;
 
+        [Main.SettingsField(warmUpValue: false)]
+        public static bool StatGearCachingEnabled = true;
+
+        [Main.SettingsField(warmUpValue: false)]
+        public static bool CorpsesRemovalEnabled = false;
+
+        [Main.SettingsField(warmUpValue: false)]
         public static bool RefreshGrid = false;
 
+        [Main.SettingsField(warmUpValue: true)]
+        public static bool GlowGridOptimization = true;
+
+        [Main.SettingsField(warmUpValue: true)]
+        public static bool GlowGridOptimizationLimiter = true;
+
+        [Main.SettingsField(warmUpValue: false)]
         public static bool EnableGridRefresh = false;
 
-        [Main.SettingsField(warmUpValue: false)]
-        public static bool StatGearCachingEnabled = false;
+        [Main.SettingsField(warmUpValue: true)]
+        public static bool MainButtonToggle = true;
 
         [Main.SettingsField(warmUpValue: false)]
-        public static bool CorpsesRemovalEnabled = true;
+        public static bool DisableForcedSlowdowns = false;               
+
+        public static bool PauseAfterWarmup = false;
 
         public static bool ShowWarmUpPopup = true;
 
-        public static bool MainButtonToggle = true;
-
-        public static float LearningRate = 0.05f;
-
-        public static int UniversalCacheAge = 2500;
-
-        public static int AgeOfGetValueUnfinalizedCache = 0;
+        public const float LearningRate = 0.0005f;
     }
 }

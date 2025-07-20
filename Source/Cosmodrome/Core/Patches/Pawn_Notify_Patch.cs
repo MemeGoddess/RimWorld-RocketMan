@@ -19,12 +19,13 @@ namespace RocketMan.Patches
                     nameof(Pawn_ApparelTracker.Notify_ApparelRemoved));
                 yield return AccessTools.Method(typeof(Pawn_ApparelTracker),
                     nameof(Pawn_ApparelTracker.Notify_LostBodyPart));
-                yield return AccessTools.Method(typeof(Pawn_ApparelTracker),
-                    nameof(Pawn_ApparelTracker.ApparelChanged));
+                //yield return AccessTools.Method(typeof(Pawn_ApparelTracker),
+                //    nameof(Pawn_ApparelTracker.));
                 yield return AccessTools.Method(typeof(Pawn_ApparelTracker), nameof(Pawn_ApparelTracker.Wear));
                 yield return AccessTools.Method(typeof(Pawn_ApparelTracker), nameof(Pawn_ApparelTracker.Remove));
             }
 
+            [HarmonyPriority(int.MaxValue)]
             public static void Postfix(Pawn_ApparelTracker __instance)
             {
                 __instance.pawn.Notify_Dirty();
@@ -40,6 +41,7 @@ namespace RocketMan.Patches
                 yield return AccessTools.Method(typeof(Pawn_EquipmentTracker), nameof(Pawn_EquipmentTracker.Notify_EquipmentRemoved));
             }
 
+            [HarmonyPriority(int.MaxValue)]
             public static void Postfix(Pawn_EquipmentTracker __instance)
             {
                 __instance.pawn.Notify_Dirty();
@@ -58,6 +60,7 @@ namespace RocketMan.Patches
                 yield return AccessTools.Method(typeof(Pawn), nameof(Pawn.Notify_BulletImpactNearby));
             }
 
+            [HarmonyPriority(int.MaxValue)]
             public static void Postfix(Pawn __instance)
             {
                 __instance.Notify_Dirty();
@@ -69,11 +72,26 @@ namespace RocketMan.Patches
         {
             public static IEnumerable<MethodBase> TargetMethods()
             {
-                yield return AccessTools.Method(typeof(Pawn_HealthTracker), nameof(Pawn_HealthTracker.Notify_HediffChanged));
                 yield return AccessTools.Method(typeof(Pawn_HealthTracker), nameof(Pawn_HealthTracker.Notify_UsedVerb));
             }
 
+            [HarmonyPriority(int.MaxValue)]
             public static void Postfix(Pawn_HealthTracker __instance)
+            {
+                __instance.pawn.Notify_Dirty();
+            }
+        }
+        
+        [RocketPatch()]
+        public static class Pawn_HediffSet_Dirty
+        {
+            public static IEnumerable<MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(HediffSet), nameof(HediffSet.DirtyCache));
+            }
+
+            [HarmonyPriority(int.MaxValue)]
+            public static void Postfix(HediffSet __instance)
             {
                 __instance.pawn.Notify_Dirty();
             }

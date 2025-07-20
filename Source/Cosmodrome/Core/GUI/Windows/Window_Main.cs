@@ -16,7 +16,7 @@ namespace RocketMan
 
         private int _errors = 0;
 
-        public override Vector2 InitialSize => new Vector2(685, 650);
+        public override Vector2 InitialSize => new Vector2(685, 700);
 
         public Window_Main()
         {
@@ -40,7 +40,7 @@ namespace RocketMan
             for (var i = 0; i < Main.yieldTabContent.Count; i++)
             {
                 ITabContent tab = Main.yieldTabContent[i].Invoke();
-                Log.Message($"ROCKETMAN: Found a new tab {tab.Label}");
+                RocketMan.Logger.Message($"ROCKETMAN: Found a new tab {tab.Label}");
                 tabs.AddTab(tab);
             }
             Finder.RocketManWindow = this;
@@ -55,23 +55,22 @@ namespace RocketMan
                 // TODO fix this mess
                 // For profiling reasons...
                 RocketStates.LastFrame = Time.frameCount;
-                // For Stat settings reason...
-                RocketMod.ReadStats();
                 // Actual work                                
-                GUI.color = Color.white;
-                // Create the RocketMan stamp
-                Text.Font = GameFont.Small;
-                Text.CurFontStyle.fontStyle = FontStyle.Bold;
-                Widgets.Label(rect, "RocketMan");
-                // Create the version string
-                rect.xMin += 90;
-                rect.xMax -= 45;
-                rect.y += 2;
-                Text.CurFontStyle.fontStyle = FontStyle.Normal;
-                Text.Font = GameFont.Tiny;
-                Widgets.Label(rect.TopPartPixels(25), $"Version <color=grey>{RocketAssembliesInfo.Version}</color>");
-                // Do the window content
-                inRect.yMin += 25;
+                //GUI.color = Color.white;
+                //// Create the RocketMan stamp
+                //GUIFont.Font = GameFont.Small;
+                //Text.CurFontStyle.fontStyle = FontStyle.Bold;
+                //Widgets.Label(rect, "RocketMan");
+                //// Create the version string
+                //rect.xMin += 90;
+                //rect.xMax -= 45;
+                //rect.y += 2;
+                //Text.CurFontStyle.fontStyle = FontStyle.Normal;
+                //GUIFont.Font = GameFont.Tiny;
+                //Widgets.Label(rect.TopPartPixels(25), $"Version <color=grey>{RocketAssembliesInfo.Version}</color>");
+                //Widgets.DrawBoxSolid(new Rect(rect.position.x, rect.position.y + 23, rect.width, 1), Color.gray);
+                //// Do the window content
+                //inRect.yMin += 25;
                 tabs.DoContent(inRect);
                 // Reduce the error counter
                 _errors = Math.Max(_errors - 1, 0);
@@ -86,14 +85,19 @@ namespace RocketMan
             finally
             {
                 GUIUtility.RestoreGUIState();
+                GUIUtility.ClearGUIState();
             }
         }
 
         public override void Close(bool doCloseSound = true)
         {
             base.Close(doCloseSound);
-            RocketDebugPrefs.DogData = false;
+            RocketDebugPrefs.LogData = false;
             Finder.RocketManWindow = null;
+            if (!RocketPrefs.WarmingUp)
+            {
+                RocketMod.Instance.WriteSettings();
+            }
         }
     }
 }

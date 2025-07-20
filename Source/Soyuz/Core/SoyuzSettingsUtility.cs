@@ -1,127 +1,90 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using RimWorld;
 using RocketMan;
 using Verse;
 
 namespace Soyuz
 {
-    public static class SoyuzSettingsUtility
+    public static partial class SoyuzSettingsUtility
     {
-        private static List<ThingDef> pawnDefs;
+        private static readonly HashSet<ThingDef> processedDefs = new HashSet<ThingDef>();
 
-        [Main.OnDefsLoaded]
-        public static void LoadSettings()
-        {
-            pawnDefs = DefDatabase<ThingDef>.AllDefs.Where(def => def.race != null).ToList();
-            CacheSettings();
-        }
+        private static readonly HashSet<JobDef> processedJobDefs = new HashSet<JobDef>();
 
         [Main.OnScribe]
-        public static void PostScribe()
+        public static void OnScribe()
         {
-            Scribe_Deep.Look(ref Context.Settings, "soyuzSettings");
-            if (Scribe.mode != LoadSaveMode.Saving && pawnDefs != null)
-                CheckExtras();
-            RocketEnvironmentInfo.SoyuzLoaded = true;
-        }
-
-        public static void CacheSettings()
-        {
+            Scribe_Deep.Look(ref Context.Settings, "soyuzSettings_NewTemp");
             if (Context.Settings == null)
+            {
                 Context.Settings = new SoyuzSettings();
-            if (Context.Settings.raceSettings.Count == 0)
-                CreateSettings();
-            foreach (var element in Context.Settings.raceSettings)
-            {
-                if (element.pawnDef == null)
-                {
-                    element.ResolveContent();
-
-                    if (element.pawnDef == null)
-                        continue;
-                }
-                element.Cache();
             }
-            CheckExtras();
         }
 
-        public static void CheckExtras()
+        [Main.OnSettingsScribedLoaded]
+        public static void OnSettingsScribedLoaded()
         {
-            if (pawnDefs.Count == Context.DilationByDef.Count)
-                return;
-            bool foundAnything = false;
-            foreach (var def in pawnDefs)
-            {
-                if (def?.race != null && !Context.DilationByDef.TryGetValue(def, out _))
-                {
-                    RaceSettings element;
-                    Context.Settings.raceSettings.Add(element = new RaceSettings()
-                    {
-                        pawnDef = def,
-                        name = def.defName,
-                        enabled = def.race.Animal && !def.race.Humanlike && !def.race.IsMechanoid,
-                        ignoreFactions = false
-                    });
-                    if (def.thingClass != typeof(Pawn))
-                    {
-                        element.enabled = false;
-                        element.ignoreFactions = false;
-                        element.ignorePlayerFaction = false;
-                    }
-                    element.Cache();
-                    foundAnything = true;
-                }
-            }
-            if (foundAnything && Scribe.mode == LoadSaveMode.Inactive)
-                Finder.Mod.WriteSettings();
+            PrepareRaceSettings();
+            PrepareJobSettings();
         }
 
-        public static void CreateSettings()
+        private static void PrepareRaceSettings()
         {
-            Context.Settings.raceSettings.Clear();
-            foreach (var def in pawnDefs)
+            Context.Settings.AllRaceSettings = Context.Settings.AllRaceSettings
+                .AsParallel()
+                .Where(s => s?.def != null).ToList();
+            foreach (RaceSettings settings in Context.Settings.AllRaceSettings)
             {
-                RaceSettings element;
-                Context.Settings.raceSettings.Add(element = new RaceSettings()
+                processedDefs.Add(settings.def);
+            }
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs
+                .AsParallel()
+                .Where(d => d.race != null && !processedDefs.Contains(d)))
+            {
+                processedDefs.Add(def);
+                bool disabled = def.thingClass != typeof(Pawn);
+                Context.Settings.AllRaceSettings.Add(new RaceSettings(def)
                 {
-                    pawnDef = def,
-                    name = def.defName,
-                    enabled = def.race.Animal && !def.race.Humanlike && !def.race.IsMechanoid,
+                    enabled = def.race.Animal
+                        && !disabled
+                        && !def.race.Humanlike
+                        && !def.race.IsMechanoid
+                        && !IgnoreMeDatabase.ShouldIgnore(def),
                     ignoreFactions = false
                 });
-                if (def.thingClass != typeof(Pawn))
-                {
-                    element.enabled = false;
-                    element.ignoreFactions = false;
-                    element.ignorePlayerFaction = false;
-                }
             }
-            Finder.Mod.WriteSettings();
+            foreach (RaceSettings settings in Context.Settings.AllRaceSettings)
+            {
+                settings.Prepare();
+            }
         }
 
-        public static RaceSettings GetRaceSettings(this Pawn pawn)
+        private static void PrepareJobSettings()
         {
-            if (pawn.def == null)
-                return null;
-            if (Context.DilationByDef.TryGetValue(pawn.def, out RaceSettings settings))
-                return settings;
-            ThingDef def = pawn.def;
-            Context.Settings.raceSettings.Add(settings = new RaceSettings()
+            Context.Settings.AllJobsSettings = Context.Settings.AllJobsSettings
+                .AsParallel()
+                .Where(s => s?.def != null).ToList();
+            foreach (JobSettings settings in Context.Settings.AllJobsSettings)
             {
-                pawnDef = def,
-                name = def.defName,
-                enabled = def.race.Animal && !def.race.Humanlike && !def.race.IsMechanoid,
-                ignoreFactions = false
-            });
-            if (settings.pawnDef.thingClass != typeof(Pawn))
-            {
-                settings.enabled = false;
-                settings.ignoreFactions = false;
-                settings.ignorePlayerFaction = false;
+                processedJobDefs.Add(settings.def);
             }
-            settings.Cache();
-            return settings;
+            foreach (JobDef def in DefDatabase<JobDef>.AllDefs
+                .AsParallel()
+                .Where(d => !processedJobDefs.Contains(d)))
+            {
+                processedJobDefs.Add(def);
+
+                Context.Settings.AllJobsSettings.Add(new JobSettings(def));
+            }
+            Context.Settings.AllJobsSettings = Context.Settings.AllJobsSettings
+                .AsParallel()
+                .Where(s => s?.def != null).ToList();
+            foreach (JobSettings settings in Context.Settings.AllJobsSettings)
+            {
+                settings.Prepare();
+            }
         }
     }
 }

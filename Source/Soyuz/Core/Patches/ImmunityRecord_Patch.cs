@@ -1,4 +1,4 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using Verse;
 
 namespace Soyuz.Patches
@@ -7,11 +7,9 @@ namespace Soyuz.Patches
     public class ImmunityRecord_ImmunityChangePerTick_Patch
     {
         public static void Postfix(ImmunityRecord __instance, ref float __result, Pawn pawn)
-        {
-            if (true 
-                && pawn.IsValidWildlifeOrWorldPawn() 
-                && pawn.IsSkippingTicks())
-                __result *= pawn.GetDeltaT();
+        {            
+            if (pawn?.IsBeingThrottled() ?? false)
+                __result *= pawn.GetTimeDelta();
         }
     }
 }

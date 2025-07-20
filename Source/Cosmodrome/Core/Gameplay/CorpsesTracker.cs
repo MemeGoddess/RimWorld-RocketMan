@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using RimWorld;
 using Verse;
 
@@ -61,9 +62,8 @@ namespace RocketMan.Gameplay
             foreach (var record in removalList)
             {
                 records.Remove(record);
-                if (record.thing is Corpse) corpses.Remove(record.thing);
+                if (record.thing is Corpse corpse) corpses.Remove(corpse);
             }
-
             removalList.Clear();
             stopwatch.Restart();
             while (destroyList.Count > 0 && stopwatch.ElapsedMilliseconds <= 10)
@@ -71,8 +71,8 @@ namespace RocketMan.Gameplay
                 try
                 {
                     var record = destroyList.Pop();
-                    if (RocketDebugPrefs.Debug) Log.Message($"ROCKETMAN: removed thing {record.thing} with total removed {removedThingsCount + 1}");
-                    if (!record.thing.Destroyed) record.thing.Destroy();
+                    if (RocketDebugPrefs.Debug) RocketMan.Logger.Message($"ROCKETMAN: removed thing {record.thing} with total removed {removedThingsCount + 1}");
+                    if (!(record.thing?.Destroyed ?? true)) record.thing?.Destroy();
                 }
                 catch (Exception er)
                 {
@@ -153,6 +153,18 @@ namespace RocketMan.Gameplay
             private int outOfFrameCounter;
             public Thing thing;
 
+            public int Age
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => inFrameCounter + outOfFrameCounter;
+            }
+
+            public float ViewedRatio
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => inFrameCounter / (inFrameCounter + outOfFrameCounter + 1e-5f);
+            }
+
             public CorpseRecord()
             {
             }
@@ -163,9 +175,6 @@ namespace RocketMan.Gameplay
                 inFrameCounter = 0;
                 outOfFrameCounter = 0;
             }
-
-            public int Age => inFrameCounter + outOfFrameCounter;
-            public float ViewedRatio => inFrameCounter / (inFrameCounter + outOfFrameCounter + 1e-5f);
 
             public void ExposeData()
             {

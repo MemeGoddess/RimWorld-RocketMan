@@ -1,3 +1,5 @@
+using System;
+using System.Runtime.CompilerServices;
 using Verse;
 
 namespace RocketMan
@@ -12,9 +14,10 @@ namespace RocketMan
         private static readonly Thing[] owners = new Thing[CacheSize];
         private static readonly int[] signatures = new int[CacheSize];
 
-        public static int GetSignature(this Thing thing, bool dirty = false)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Int32 GetSignature(this Thing thing, bool dirty = false)
         {
-            var key = thing.thingIDNumber;
+            Int32 key = thing.thingIDNumber;
             unchecked
             {
                 key = ((key << 30) ^ key) * A;
@@ -28,7 +31,6 @@ namespace RocketMan
                 owners[key] = thing;
                 return signatures[key] = Rand.Int;
             }
-
             return signatures[key];
         }
     }

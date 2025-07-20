@@ -7,15 +7,16 @@ using HarmonyLib;
 using RocketMan;
 using Verse;
 
-namespace Soyuz
+namespace Soyuz.Patches
 {
     [SoyuzPatch(typeof(Gen), nameof(Gen.IsHashIntervalTick), parameters: new[] { typeof(Thing), typeof(int) })]
     public static class Gen_IsHashIntervalTick_Patch
     {
+        private static MethodBase mIsCustomTickIntervalInternel = AccessTools.Method(typeof(ContextualExtensions), nameof(ContextualExtensions.IsCustomTickInterval_newtemp));
+        private static MethodBase mCurrent = AccessTools.PropertyGetter(typeof(ContextualExtensions), nameof(ContextualExtensions.Current));
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
-            MethodBase mIsCustomTickIntervalInternel = AccessTools.Method(typeof(ContextualExtensions), nameof(ContextualExtensions.IsCustomTickIntervalInternel));
-            MethodBase mCurrent = AccessTools.PropertyGetter(typeof(ContextualExtensions), nameof(ContextualExtensions.Current));
             if (mIsCustomTickIntervalInternel == null || mCurrent == null)
             {
                 Log.Error($"SOYUZ:mIsCustomTickIntervalInternel is {mIsCustomTickIntervalInternel == null}");

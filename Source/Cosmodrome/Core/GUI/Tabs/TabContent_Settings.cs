@@ -5,7 +5,8 @@ namespace RocketMan.Tabs
 {
     public class TabContent_Settings : ITabContent
     {
-        public override string Label => "RocketMan.Tab".Translate();
+        public override Texture2D Icon => TexTab.Settings;
+        public override string Label => KeyedResources.RocketMan_Tab;
         public override bool ShouldShow => true;
 
         private Texture2D graphic = ContentFinder<Texture2D>.Get("RocketMan/UI/rocketman_main_nobackground", true);
@@ -18,12 +19,12 @@ namespace RocketMan.Tabs
                 {
                     GUIUtility.ExecuteSafeGUIAction(() =>
                     {
-                        Text.Font = GameFont.Medium;
-                        Text.Anchor = TextAnchor.MiddleCenter;
+                        GUIFont.Font = GUIFontSize.Medium;
+                        GUIFont.Anchor = TextAnchor.MiddleCenter;
                         if (Find.TickManager.Paused)
-                            Widgets.Label(rect, "RocketMan.Settings.PleaseWait".Translate());
+                            Widgets.Label(rect, KeyedResources.RocketMan_Settings_PleaseWait);
                         else
-                            Widgets.Label(rect, "RocketMan.Settings.PleaseWait".Translate());
+                            Widgets.Label(rect, KeyedResources.RocketMan_Settings_PleaseUnpause);
                     });
                 }
                 else
@@ -39,10 +40,12 @@ namespace RocketMan.Tabs
 
         public override void OnSelect()
         {
+            base.OnSelect();
         }
 
         public override void OnDeselect()
         {
+            base.OnDeselect();
         }
     }
 }

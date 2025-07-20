@@ -12,20 +12,49 @@ namespace Gagarin
     {
         private const string CacheFolderName = "Cache";
 
-        private const string UnifiedXmlFileName = "unified.xml";
+        private const string TexturesFolderName = "Textures";
 
-        private const string UnifiedPatchedOriginalXmlFileName = "unified_original_dump.xml";
+        private const string ReportsFolderName = "Reports";
 
-        private const string ModListFileName = "mods.xml";
+        private const string UnifiedXmlFileName = "Unified.xml";
 
-        private const string HashFileName = "hash.xml";
+        private const string UnifiedPatchedOriginalXmlFileName = "Unified_Original.xml";
+
+        private const string ModListFileName = "ModList.xml";
+
+        private const string HashFileName = "AssetsHash.xml";
+
+        private const string HashIntFileName = "AssetsHashInt.xml";
+
+        private const string GagarinSettingsFileName = "GagarinSettings.xml";
 
 
         private static string _cacheFolderPath;
 
         public static string CacheFolderPath
         {
-            get => _cacheFolderPath ?? (_cacheFolderPath = Path.Combine(RocketEnvironmentInfo.ConfigFolderPath, CacheFolderName));
+            get => _cacheFolderPath ?? (_cacheFolderPath = Path.Combine(RocketEnvironmentInfo.CustomConfigFolderPath, CacheFolderName));
+        }
+
+        private static string _gagarinSettingsPath;
+
+        public static string GagarinSettingsFilePath
+        {
+            get => _gagarinSettingsPath ?? (_gagarinSettingsPath = Path.Combine(CacheFolderPath, GagarinSettingsFileName));
+        }
+
+        private static string _texturesFolderPath;
+
+        public static string TexturesFolderPath
+        {
+            get => _texturesFolderPath ?? (_texturesFolderPath = Path.Combine(CacheFolderPath, TexturesFolderName));
+        }
+
+        private static string _reportsFolderPath;
+
+        public static string ReportsFolderPath
+        {
+            get => _reportsFolderPath ?? (_reportsFolderPath = Path.Combine(RocketEnvironmentInfo.CustomConfigFolderPath, ReportsFolderName));
         }
 
         private static string _unifiedXmlPath;
@@ -58,12 +87,18 @@ namespace Gagarin
             get => _hashFilePath ?? (_hashFilePath = Path.Combine(CacheFolderPath, HashFileName));
         }
 
+        private static string _hashFilePathInt;
+
+        public static string HashFilePathInt
+        {
+            get => _hashFilePathInt ?? (_hashFilePathInt = Path.Combine(CacheFolderPath, HashIntFileName));
+        }
+
 
         public static bool CacheExists
         {
-            get => File.Exists(UnifiedXmlFilePath) && File.Exists(HashFilePath) && Directory.Exists(CacheFolderPath);
+            get => File.Exists(UnifiedXmlFilePath) && File.Exists(HashFilePath) && File.Exists(HashFilePathInt) && Directory.Exists(CacheFolderPath);
         }
-
 
         private static bool _modListChangedInt;
 
@@ -78,7 +113,7 @@ namespace Gagarin
 
                 _modListChangedInt = true;
                 _modListChanged = RunningModsSetUtility.Changed(
-                    Context.RunningMods.Select(m => m.PackageId).ToHashSet(), ModListFilePath);
+                    Context.RunningMods.Select(m => m.PackageId).ToList(), ModListFilePath);
                 return _modListChanged;
             }
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using RocketMan;
+using UnityEngine;
 using Verse;
 
 namespace RocketMan
@@ -39,25 +40,42 @@ namespace RocketMan
         {
             foreach (var patch in patches)
                 patch.Patch(Finder.Harmony);
-            if (RocketDebugPrefs.Debug) Log.Message($"ROCKETMAN: Patching finished");
+            if (RocketDebugPrefs.Debug) RocketMan.Logger.Message($"ROCKETMAN: Patching finished");
         }
 
         static RocketPatcher()
         {
-            IEnumerable<Type> flaggedTypes = GetPatches();
+            IEnumerable<Type> flaggedTypes = GetPatchTypes();
+            LogTypesToFile(flaggedTypes);
             List<RocketPatchInfo> patchList = new List<RocketPatchInfo>();
             foreach (Type type in flaggedTypes)
             {
                 RocketPatchInfo patch = new RocketPatchInfo(type);
                 patchList.Add(patch);
-                if (RocketDebugPrefs.Debug) Log.Message($"ROCKETMAN: Found patch in {type} and is {(patch.IsValid ? "valid" : "invalid") }");
+                if (RocketDebugPrefs.Debug) RocketMan.Logger.Message($"ROCKETMAN: Found patch in {type} and is {(patch.IsValid ? "valid" : "invalid") }");
             }
             patches = patchList.Where(p => p.IsValid).ToArray();
         }
 
-        private static IEnumerable<Type> GetPatches()
+        private static IEnumerable<Type> GetPatchTypes()
         {
-            return typeof(RocketPatcher).Assembly.GetLoadableTypes().Where(t => t.HasAttribute<RocketPatch>());
+            List<Type> types = new List<Type>();
+            types.AddRange(AccessTools.GetTypesFromAssembly(Assembly.GetExecutingAssembly()));
+            types.AddRange(AccessTools.GetTypesFromAssembly(Assembly.GetExecutingAssembly()).SelectMany(t => t.GetNestedTypes()));
+            return types
+                .Where(t => t.HasAttribute<RocketPatch>())
+                .Distinct();
+        }
+
+        private static void LogTypesToFile(IEnumerable<Type> types)
+        {
+            string report = string.Empty;
+            foreach (Type t in types)
+            {
+                report += t.FullName + "\n";
+            }
+            Logger.Debug(Assembly.GetExecutingAssembly().FullName, file: "Types.log");
+            Logger.Debug(report, file: "Types.log");
         }
     }
 }

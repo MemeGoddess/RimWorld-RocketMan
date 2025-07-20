@@ -11,18 +11,20 @@ using Verse;
 
 namespace Soyuz
 {
+
     public class RaceSettings : IExposable
     {
-        public ThingDef pawnDef;
-        public string name;
+        public ThingDef def;
 
         public bool enabled = true;
-        public bool ignoreFactions;
-        public bool ignorePlayerFaction;
-        public bool isFastMoving;
+
+        public bool ignoreFactions = false;
+
+        public bool ignorePlayerFaction = false;
+
+        public bool isFastMoving = false;
 
         private int version;
-        private bool isFastMovingInitialized;
 
         private const int SETTINGS_VERSION = 1;
 
@@ -42,70 +44,50 @@ namespace Soyuz
         {
         }
 
-        public RaceSettings(string defName)
+        public RaceSettings(ThingDef def)
         {
-            this.name = defName;
+            this.def = def;
+            this.version = SETTINGS_VERSION;
+            if (this.def.StatBaseDefined(StatDefOf.MoveSpeed))
+            {
+                this.isFastMoving = this.def.GetStatValueAbstract(StatDefOf.MoveSpeed) > 8;
+            }
         }
 
         public void ExposeData()
         {
-            Scribe_Values.Look(ref version, "version", -1);
-            Scribe_Values.Look(ref name, "pawnDefName");
-            Scribe_Values.Look(ref enabled, "enabled", true);
-            Scribe_Values.Look(ref ignoreFactions, "ignoreFactions");
-            Scribe_Values.Look(ref ignorePlayerFaction, "ignorePlayerFaction");
-            Scribe_Values.Look(ref isFastMoving, "isFastMoving", false);
-            Scribe_Values.Look(ref isFastMovingInitialized, "isFastMovingInitialized", false);
-        }
-
-        public void ResolveContent()
-        {
-            if (false
-                || !DefDatabase<ThingDef>.defsByName.TryGetValue(this.name, out var def)
-                || this.isFastMovingInitialized == true)
-                return;
-
-            this.pawnDef = def;
-
-            if (this.version != SETTINGS_VERSION)
-            {
-                this.Notify_VersionChanged();
-                this.version = SETTINGS_VERSION;
-            }
             try
             {
-                if (StatDefOf.MoveSpeed != null && (this.pawnDef?.StatBaseDefined(StatDefOf.MoveSpeed) ?? false))
-                {
-                    this.isFastMoving = this.pawnDef.GetStatValueAbstract(StatDefOf.MoveSpeed) > 8;
-                    this.isFastMovingInitialized = true;
-                }
+                Scribe_Defs.Look(ref def, "pawnDef");
             }
-            catch
+            finally
             {
+                Scribe_Values.Look(ref enabled, "enabled", true);
+                Scribe_Values.Look(ref version, "version", -1);
+                Scribe_Values.Look(ref ignoreFactions, "ignoreFactions");
+                Scribe_Values.Look(ref ignorePlayerFaction, "ignorePlayerFaction");
+                Scribe_Values.Look(ref isFastMoving, "isFastMoving", false);
             }
-        }
-
-        public void Cache()
-        {
-            Context.DilationByDef[pawnDef] = this;
-            Context.DilationEnabled[pawnDef.index] = this.enabled;
-            if (!this.isFastMovingInitialized && this.pawnDef.StatBaseDefined(StatDefOf.MoveSpeed))
-            {
-                this.isFastMoving = this.pawnDef.GetStatValueAbstract(StatDefOf.MoveSpeed) > 8;
-                this.isFastMovingInitialized = true;
-            }
-            Context.DilationInts[pawnDef.index] = DilationInt;
-            Context.DilationFastMovingRace[pawnDef.index] = isFastMoving;
             if (this.version != SETTINGS_VERSION)
             {
                 this.Notify_VersionChanged();
                 this.version = SETTINGS_VERSION;
+            }
+        }
+
+        public void Prepare(bool updating = false)
+        {
+            Context.DilationEnabled[def.index] = this.enabled;
+            if (!updating)
+            {
+                Context.DilationByDef[def] = this;
+                Context.DilationFastMovingRace[def.index] = isFastMoving;
             }
         }
 
         private void Notify_VersionChanged()
         {
-            if (this.pawnDef?.race?.IsMechanoid ?? false)
+            if (this.def?.race?.IsMechanoid ?? false)
             {
                 this.enabled = false;
                 this.ignoreFactions = false;
@@ -114,14 +96,106 @@ namespace Soyuz
         }
     }
 
-    public class SoyuzSettings : IExposable
+    public class JobSettings : IExposable
     {
-        public List<RaceSettings> raceSettings = new List<RaceSettings>();
+        private const int SETTINGS_VERSION = 2;
+
+        private int version;
+
+        public JobDef def;
+
+        public JobThrottleMode throttleMode = JobThrottleMode.Full;
+
+        public JobThrottleFilter throttleFilter = JobThrottleFilter.Animals;
+
+        public JobSettings()
+        {
+        }
+
+        public JobSettings(JobDef def)
+        {
+            this.def = def;
+        }
 
         public void ExposeData()
         {
-            Scribe_Collections.Look(ref raceSettings, "raceSettings", LookMode.Deep);
-            if (raceSettings == null) raceSettings = new List<RaceSettings>();
+            try
+            {
+                Scribe_Defs.Look(ref def, "job");
+            }
+            finally
+            {
+                Scribe_Values.Look(ref version, "version", -1);
+                Scribe_Values.Look(ref throttleMode, "throttleMode", JobThrottleMode.Full);
+                Scribe_Values.Look(ref throttleFilter, "throttleFilter", JobThrottleFilter.Animals);
+            }
+            if (this.version != SETTINGS_VERSION)
+            {
+                this.Notify_VersionChanged();
+            }
+        }
+
+        public void RestoreDefault()
+        {
+            throttleMode = JobThrottleMode.Full;
+            throttleFilter = JobThrottleFilter.Animals;
+        }
+
+        public void Prepare(bool updating = false)
+        {
+            if (!updating && def != null)
+            {
+                Context.JobDilationByDef[def] = this;
+            }
+        }
+
+        private void Notify_VersionChanged()
+        {
+            this.RestoreDefault();
+            this.version = SETTINGS_VERSION;
+        }
+    }
+
+    public class SoyuzSettings : IExposable
+    {
+        private bool fresh = true;
+
+        public List<RaceSettings> AllRaceSettings = new List<RaceSettings>();
+
+        public List<JobSettings> AllJobsSettings = new List<JobSettings>();
+
+        public float dilationFactorOffscreen = 0.8f;
+
+        public float dilationFactorOnscreen = 0.2f;
+
+        public bool Fresh
+        {
+            get => fresh;
+        }
+
+        public void ExposeData()
+        {
+            if (Scribe.mode == LoadSaveMode.Saving && fresh)
+            {
+                fresh = false;
+            }
+            Scribe_Values.Look(ref fresh, "firstUse", true);
+            Scribe_Collections.Look(ref AllRaceSettings, "AllRaceSettings_NewTemp", LookMode.Deep);
+            Scribe_Collections.Look(ref AllJobsSettings, "AllJobsSettings", LookMode.Deep);
+            if (AllRaceSettings == null)
+            {
+                AllRaceSettings = new List<RaceSettings>();
+            }
+            if (AllJobsSettings == null)
+            { 
+                AllJobsSettings = new List<JobSettings>();
+            }            
+            Scribe_Values.Look(ref dilationFactorOffscreen, "dilationFactorOffscreen", 0.6f);
+            if (dilationFactorOffscreen < 0.6f)
+                dilationFactorOffscreen = 0.6f;
+            Scribe_Values.Look(ref dilationFactorOnscreen, "dilationFactorOnscreen", 0.2f);
+            if (dilationFactorOnscreen < 0.2f)
+                dilationFactorOnscreen = 0.2f;
         }
     }
 }

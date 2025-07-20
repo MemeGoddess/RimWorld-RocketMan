@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Xml;
+using RocketMan;
 using Verse;
 
 namespace Gagarin
@@ -12,7 +13,17 @@ namespace Gagarin
             public static void Postfix(XmlNode node, LoadableXmlAsset loadingAsset, Def __result)
             {
                 if (!Context.IsUsingCache && __result != null)
-                    CachedDefHelper.Register(__result, node, loadingAsset);
+                {
+                    try
+                    {
+                        CachedDefHelper.Register(__result, node, loadingAsset);
+                    }
+                    catch (Exception er)
+                    {
+                        Logger.Debug("GAGARIN: Failed in LoadableXmlAsset", exception: er);
+                        Context.IsUsingCache = false;
+                    }
+                }
             }
         }
     }

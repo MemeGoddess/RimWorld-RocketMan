@@ -40,28 +40,44 @@ namespace Proton
         public static void PatchAll()
         {
             foreach (var patch in patches)
-                patch.Patch(harmony);
-            Log.Message($"PROTON: Patching finished");
+                patch.Patch(harmony);            
             RocketEnvironmentInfo.ProtonLoaded = true;
         }
 
         [Main.OnInitialization]
         public static void Intialize()
         {
-            IEnumerable<Type> flaggedTypes = GetPatches();
+            IEnumerable<Type> flaggedTypes = GetPatchTypes();
+            LogTypesToFile(flaggedTypes);
             List<ProtonPatchInfo> patchList = new List<ProtonPatchInfo>();
             foreach (Type type in flaggedTypes)
             {
                 ProtonPatchInfo patch = new ProtonPatchInfo(type);
                 patchList.Add(patch);
-                if (RocketDebugPrefs.Debug) Log.Message($"PROTON: found patch in {type} and is {(patch.IsValid ? "valid" : "invalid") }");
+                if (RocketDebugPrefs.Debug) RocketMan.Logger.Message($"PROTON: found patch in {type} and is {(patch.IsValid ? "valid" : "invalid") }");
             }
             patches = patchList.Where(p => p.IsValid).ToArray();
         }
 
-        private static IEnumerable<Type> GetPatches()
+        private static IEnumerable<Type> GetPatchTypes()
         {
-            return typeof(ProtonPatcher).Assembly.GetLoadableTypes().Where(t => t.HasAttribute<ProtonPatch>());
+            List<Type> types = new List<Type>();
+            types.AddRange(AccessTools.GetTypesFromAssembly(Assembly.GetExecutingAssembly()));
+            types.AddRange(AccessTools.GetTypesFromAssembly(Assembly.GetExecutingAssembly()).SelectMany(t => t.GetNestedTypes()));
+            return types
+                .Where(t => t.HasAttribute<ProtonPatch>())
+                .Distinct();
+        }
+
+        private static void LogTypesToFile(IEnumerable<Type> types)
+        {
+            string report = string.Empty;
+            foreach (Type t in types)
+            {
+                report += t.FullName + "\n";
+            }
+            Logger.Debug(Assembly.GetExecutingAssembly().FullName, file: "Types.Proton.log");
+            Logger.Debug(report, file: "Types.Proton.log");
         }
     }
 }

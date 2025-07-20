@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using RimWorld;
 using RocketMan;
 using RocketMan.Tabs;
@@ -11,17 +12,19 @@ namespace Proton
 {
     public class AlertSettings : IExposable
     {
+        private int counter;
+        private float avgT;
+        private Stopwatch stopwatch = new Stopwatch();
+
         public string typeId;
-
         public Alert alert;
-
         public bool enabledInt = true;
-
-        public bool ignored = false;
+        public bool ignored;
 
         public bool Enabled
         {
-            get => enabledInt && (avgT < Context.settings.executionTimeLimit || counter < 15 || ignored);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => enabledInt && (avgT < Context.Settings.executionTimeLimit || counter < 15 || ignored);
             set
             {
                 enabledInt = value;
@@ -34,16 +37,19 @@ namespace Proton
 
         public float AverageExecutionTime
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => avgT;
         }
 
         public float TimeSinceLastExecution
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (float)Math.Round((float)(stopwatch?.ElapsedTicks ?? 0) / Stopwatch.Frequency, 3);
         }
 
         public bool ShouldUpdate
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 if (!enabledInt)
@@ -52,26 +58,18 @@ namespace Proton
                     return true;
                 if (ignored)
                     return true;
-                if (avgT >= Context.settings.executionTimeLimit)
+                if (avgT >= Context.Settings.executionTimeLimit)
                     return false;
                 float elapsedSeconds = ((float)stopwatch.ElapsedTicks / Stopwatch.Frequency);
                 if (avgT > 2.5f)
                     return elapsedSeconds > Math.Min(30f * (avgT - 1.5f), 60);
-                if (elapsedSeconds <= Context.settings.minInterval)
+                if (elapsedSeconds <= Context.Settings.minInterval)
                     return false;
                 if (elapsedSeconds >= 25f)
                     return true;
                 return 10f * avgT <= elapsedSeconds / 4.0f;
             }
         }
-
-        private int counter = 0;
-
-        private float avgT = 0f;
-
-        private Stopwatch stopwatch = new Stopwatch();
-
-        private string lastVersion;
 
         public AlertSettings()
         {
@@ -80,7 +78,7 @@ namespace Proton
         public AlertSettings(string typeId)
         {
             this.typeId = typeId;
-            this.Verify();
+            this.Setup();
         }
 
         public void UpdatePerformanceMetrics(float t)
@@ -92,7 +90,7 @@ namespace Proton
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
-            if (!ignored && counter > 30 && avgT > Context.settings.executionTimeLimit)
+            if (!ignored && counter > 30 && avgT > Context.Settings.executionTimeLimit)
             {
                 enabledInt = false;
                 UpdateAlert();
@@ -106,12 +104,6 @@ namespace Proton
             Scribe_Values.Look(ref typeId, "typeId");
             Scribe_Values.Look(ref enabledInt, "enabled2", true);
             Scribe_Values.Look(ref avgT, "avgT", 0.05f);
-            Scribe_Values.Look(ref lastVersion, "lastVersion");
-            if (lastVersion != RocketAssembliesInfo.Version)
-            {
-                this.lastVersion = RocketAssembliesInfo.Version;
-                this.Verify();
-            }
         }
 
         public void UpdateAlert(bool removeReadout = true)
@@ -121,24 +113,24 @@ namespace Proton
             if (alert != null)
             {
                 if (removeReadout)
-                    Context.readoutInstance.activeAlerts.Remove(alert);
+                    Context.ReadoutInstance.activeAlerts.Remove(alert);
                 alert.cachedActive = false;
                 return;
             }
-            for (int i = 0; i < Context.alerts.Length; i++)
+            for (int i = 0; i < Context.Alerts.Length; i++)
             {
-                if (Context.alertSettingsByIndex[i] == this && Context.alerts[i] != null)
+                if (Context.AlertSettingsByIndex[i] == this && Context.Alerts[i] != null)
                 {
-                    Alert alert = Context.alerts[i];
-                    Context.alertToSettings[alert] = this;
+                    Alert alert = Context.Alerts[i];
+                    Context.AlertToSettings[alert] = this;
                     if (removeReadout)
-                        Context.readoutInstance.activeAlerts.Remove(alert);
+                        Context.ReadoutInstance.activeAlerts.Remove(alert);
                     alert.cachedActive = false;
                 }
             }
         }
 
-        private void Verify()
+        private void Setup()
         {
             string temp = typeId.ToLower();
             if (temp.Contains("lowfood"))
@@ -156,6 +148,8 @@ namespace Proton
             if (temp.Contains("hypothermia"))
                 ignored = true;
             if (temp.Contains("heatstroke"))
+                ignored = true;
+            if (temp.Contains("needresearchproject"))
                 ignored = true;
         }
     }

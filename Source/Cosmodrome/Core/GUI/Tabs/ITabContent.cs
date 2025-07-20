@@ -12,19 +12,38 @@ namespace RocketMan.Tabs
             get => selected;
             set
             {
+                if (selected == value)
+                {
+                    return;
+                }
                 selected = value;
                 if (value) OnSelect();
                 else OnDeselect();
             }
         }
 
+        public abstract Texture2D Icon { get; }
         public abstract bool ShouldShow { get; }
 
-        public virtual float LabelWidth => Text.CalcSize(Label).x;
-        public abstract string Label { get; }
+        public virtual float LabelWidth => GUIFont.CalcSize(Label).x;
 
+        public abstract string Label { get; }
         public abstract void DoContent(Rect rect);
-        public abstract void OnSelect();
-        public abstract void OnDeselect();
+
+        public virtual void OnSelect()
+        {
+            if (!RocketPrefs.WarmingUp)
+            {
+                RocketMod.Instance.WriteSettings();
+            }
+        }
+
+        public virtual void OnDeselect()
+        {
+            if (!RocketPrefs.WarmingUp)
+            {
+                RocketMod.Instance.WriteSettings();
+            }
+        }
     }
 }

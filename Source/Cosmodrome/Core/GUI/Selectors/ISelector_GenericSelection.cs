@@ -9,8 +9,12 @@ namespace RocketMan
     public abstract class ISelector_GenericSelection<T> : ISelector
     {
         public IEnumerable<T> items;
+
         public Action<T> selectionAction;
-        private Rect viewRect = Rect.zero;
+
+        public string searchString = "";
+
+        public bool useSearchBar = true;
 
         public ISelector_GenericSelection(IEnumerable<T> defs, Action<T> selectionAction, bool integrated = false,
             Action closeAction = null) : base(integrated, closeAction)
@@ -19,51 +23,37 @@ namespace RocketMan
             this.selectionAction = selectionAction;
         }
 
-        public virtual float RowHeight => 54f;
+        public virtual float RowHeight => 28f;
 
-        protected abstract bool DoSingleItem(Rect rect, T item);
+        protected abstract void DoSingleItem(Rect rect, T item);
         protected abstract bool ItemMatchSearchString(T item);
 
-        public override void FillContents(Rect inRect)
+        public override void DoContent(Rect inRect)
         {
             if (useSearchBar)
             {
-                var rect = inRect.TopPartPixels(30);
-                Text.Font = GameFont.Tiny;
-                var searchRect = rect.TopPartPixels(20);
-                if (Widgets.ButtonImage(searchRect.LeftPartPixels(20), TexButton.OpenInspector))
+                Rect searchRect = inRect.TopPartPixels(25);
+                GUIFont.Font = GUIFontSize.Tiny;
+                if (Widgets.ButtonImage(searchRect.LeftPartPixels(25), TexButton.OpenInspector))
                 {
                 }
-
                 searchRect.xMin += 25;
                 searchString = Widgets.TextField(searchRect, searchString).ToLower();
-                inRect.y += 25;
-                inRect.height -= 25;
+                inRect.yMin += 30;
             }
-
             try
             {
-                viewRect = inRect.AtZero();
-                viewRect.height = items.Count() * RowHeight;
-                viewRect.width -= 20;
-                Widgets.DrawMenuSection(inRect);
-                Widgets.BeginScrollView(inRect.ContractedBy(2), ref scrollPosition, viewRect);
-                Text.Font = GameFont.Tiny;
-                var curRect = viewRect.TopPartPixels(RowHeight);
-                foreach (var item in items)
-                {
-                    if (useSearchBar && !ItemMatchSearchString(item))
-                        continue;
-                    if (DoSingleItem(curRect, item))
+                GUIUtility.ScrollView(inRect, ref scrollPosition, items,
+                    heightLambda: (item) => !searchString.NullOrEmpty() ? (ItemMatchSearchString(item) ? RowHeight : -1f) : RowHeight,
+                    elementLambda: (rect, item) =>
                     {
-                        selectionAction.Invoke(item);
-                        if (!integrated) Close();
-                    }
-
-                    curRect.y += RowHeight;
-                }
-
-                Widgets.EndScrollView();
+                        DoSingleItem(rect, item);
+                        if (Widgets.ButtonInvisible(rect))
+                        {
+                            selectionAction.Invoke(item);
+                            if (!integrated) Close();
+                        }
+                    });
             }
             catch (Exception er)
             {

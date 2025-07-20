@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using Verse;
 using Verse.AI.Group;
@@ -36,6 +37,7 @@ namespace RocketMan
 
         public float Progress
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ticksPassed.TicksToSeconds() / WARMUP_TIME;
         }
 
@@ -96,8 +98,10 @@ namespace RocketMan
             base.MapComponentTick();
             if (finished && GenTicks.TicksGame == integrityGameTick)
             {
-                Log.Message("ROCKETMAN: Position verfication started!");
+                RocketMan.Logger.Message("ROCKETMAN: Position verfication started!");
                 PopPawnsPosition();
+                if (RocketPrefs.PauseAfterWarmup && !Find.TickManager.Paused)
+                    Find.TickManager.Pause();
             }
             if (finished)
                 return;
@@ -117,7 +121,7 @@ namespace RocketMan
             finished = true;
             current = null;
             PopSettings();
-            Log.Message("ROCKETMAN: <color=red>Warm up</color> Finished for new map!");
+            RocketMan.Logger.Message("ROCKETMAN: <color=red>Warm up</color> Finished for new map!");
         }
 
         public override void MapRemoved()
@@ -142,7 +146,7 @@ namespace RocketMan
                 current = null;
                 finished = true;
                 PopSettings();
-                Log.Message("ROCKETMAN: <color=red>Warm up ABORTED!</color> for new map!");
+                RocketMan.Logger.Message("ROCKETMAN: <color=red>Warm up ABORTED!</color> for new map!");
             }
         }
 
@@ -158,16 +162,12 @@ namespace RocketMan
                 current = this;
                 started = true;
                 startingTicksGame = tick;
-                Log.Message("ROCKETMAN: <color=red>Warm up</color> started for new map!");
+                RocketMan.Logger.Message("ROCKETMAN: <color=red>Warm up</color> started for new map!");
             }
         }
 
         private void DoPopupContent(Rect inRect)
         {
-            FontStyle style = Text.CurFontStyle.fontStyle;
-            Color color = GUI.color;
-            GameFont font = Text.Font;
-            TextAnchor anchor = Text.Anchor;
             try
             {
                 Widgets.DrawWindowBackground(inRect.ExpandedBy(20));
@@ -175,13 +175,12 @@ namespace RocketMan
                 Rect progressRect = inRect.BottomHalf();
                 progressRect.xMin += 25;
                 progressRect.xMax -= 25;
-                Text.Font = GameFont.Small;
-                Text.Anchor = TextAnchor.MiddleCenter;
+                GUIFont.Font = GUIFontSize.Small;
+                GUIFont.Anchor = TextAnchor.MiddleCenter;
                 Widgets.Label(textRect.TopPart(0.6f), (Find.TickManager?.Paused ?? false) ?
-                    "RocketMan.Unpause".Translate() :
-                     "<color=orange>" + "RocketMan.RocketMan".Translate() + "</color> " + "RocketMan.Warming".Translate());
-                Text.Font = GameFont.Tiny;
-                Widgets.Label(textRect.BottomPart(0.4f), "RocketMan.HideProgressBar".Translate());
+                    KeyedResources.RocketMan_Unpause : "<color=orange>" + KeyedResources.RocketMan_RocketMan + "</color> " + KeyedResources.RocketMan_Warming);
+                GUIFont.Font = GUIFontSize.Tiny;
+                Widgets.Label(textRect.BottomPart(0.4f), KeyedResources.RocketMan_HideProgressBar);
                 DoProgressBar(progressRect);
             }
             catch (Exception er)
@@ -190,10 +189,6 @@ namespace RocketMan
             }
             finally
             {
-                Text.Anchor = anchor;
-                Text.Font = font;
-                Text.CurFontStyle.fontStyle = style;
-                GUI.color = color;
             }
         }
 
@@ -243,7 +238,7 @@ namespace RocketMan
             }
         }
 
-        private readonly Dictionary<Pawn, IntVec3> positionStash = new Dictionary<Pawn, IntVec3>();
+        private readonly Dictionary<int, IntVec3> positionStash = new Dictionary<int, IntVec3>();
 
         private void PopPawnsPosition()
         {
@@ -256,7 +251,7 @@ namespace RocketMan
                    || pawn.InContainerEnclosed
                    || pawn.Destroyed)
                     continue;
-                if (positionStash.TryGetValue(pawn, out IntVec3 stashedPosition)
+                if (positionStash.TryGetValue(pawn.thingIDNumber, out IntVec3 stashedPosition)
                     && (pawn.positionInt.DistanceTo(pawn.positionInt) >= 7.5f || (pawn.positionInt.InBounds(map) && !pawn.positionInt.Standable(map))))
                 {
                     pawn.jobs?.StopAll(true, true);
@@ -279,7 +274,7 @@ namespace RocketMan
                     || pawn.InContainerEnclosed
                     || pawn.Destroyed)
                     continue;
-                positionStash[pawn] = pawn.positionInt;
+                positionStash[pawn.thingIDNumber] = pawn.positionInt;
             }
         }
 
